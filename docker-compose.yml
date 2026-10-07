@@ -1,0 +1,158 @@
+services:
+  mysqllab:
+    build: .
+    image: aqualife-mysql:local
+    container_name: aqualife_mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: AquaLife
+      MYSQL_USER: aqualife_user
+      MYSQL_PASSWORD: aqualife_pass
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      # -h localhost hace que mysqladmin se conecte por socket Unix, que ya
+      # responde durante el arranque temporal de MySQL (mientras todavia se
+      # esta cargando init.sql), dando un falso "healthy" prematuro. Forzamos
+      # TCP con --protocol=tcp: el servidor temporal arranca con
+      # --skip-networking (no escucha TCP), asi que el ping solo pasa cuando
+      # el servidor real (post-carga) ya esta escuchando en el puerto 3306.
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "--protocol=tcp", "-u", "root", "-p$$MYSQL_ROOT_PASSWORD"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      # La carga inicial de init.sql (varios millones de filas) puede tardar
+      # ~2-3 minutos; start_period cubre ese arranque sin marcar "unhealthy".
+      start_period: 240s
+    networks:
+      - aqualife_net
+
+  # NoSQL orientado a documentos (MongoDB) - respalda la Tarea 5 (documentación
+  # jerárquica de especies: ficha principal + documentos secundarios).
+  mongo:
+    image: mongo:latest
+    container_name: aqualife_mongo
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: password
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+    networks:
+      - aqualife_net
+
+  # NoSQL orientado a grafos (Neo4j) - respalda la Tarea 4.b (modelo alternativo
+  # de conversaciones en hilos de comentarios).
+  neo4j:
+    image: neo4j:latest
+    container_name: aqualife_neo4j
+    restart: unless-stopped
+    environment:
+      NEO4J_AUTH: neo4j/password
+    ports:
+      - "7474:7474"
+      - "7687:7687"
+    volumes:
+      - neo4j_data:/data
+    networks:
+      - aqualife_net
+
+  # NoSQL orientado a columnas (MonetDB) - motor analítico complementario a MySQL.
+  monetdb:
+    image: monetdb/monetdb:latest
+    container_name: aqualife_monetdb
+    restart: unless-stopped
+    environment:
+      MDB_DB_ADMIN_PASS: monetdb
+      MDB_CREATE_DBS: aqualife-db
+    ports:
+      - "50001:50000"
+    networks:
+      - aqualife_net
+    healthcheck:
+      test: ["CMD-SHELL", "timeout 1 bash -c '</dev/tcp/localhost/50000' || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+
+  # NoSQL tipo llave-valor con consistencia fuerte (cluster etcd de 3 nodos, Raft).
+  etcd1:
+    image: quay.io/coreos/etcd:v3.5.9
+    container_name: aqualife_etcd1
+    restart: unless-stopped
+    environment:
+      ETCD_NAME: etcd1
+      ETCD_INITIAL_CLUSTER: "etcd1=http://etcd1:2380,etcd2=http://etcd2:2380,etcd3=http://etcd3:2380"
+      ETCD_INITIAL_CLUSTER_STATE: new
+      ETCD_INITIAL_CLUSTER_TOKEN: etcd-cluster
+      ETCD_ADVERTISE_CLIENT_URLS: "http://etcd1:2379"
+      ETCD_LISTEN_CLIENT_URLS: "http://0.0.0.0:2379"
+      ETCD_INITIAL_ADVERTISE_PEER_URLS: "http://etcd1:2380"
+      ETCD_LISTEN_PEER_URLS: "http://0.0.0.0:2380"
+    networks:
+      - aqualife_net
+
+  etcd2:
+    image: quay.io/coreos/etcd:v3.5.9
+    container_name: aqualife_etcd2
+    restart: unless-stopped
+    environment:
+      ETCD_NAME: etcd2
+      ETCD_INITIAL_CLUSTER: "etcd1=http://etcd1:2380,etcd2=http://etcd2:2380,etcd3=http://etcd3:2380"
+      ETCD_INITIAL_CLUSTER_STATE: new
+      ETCD_INITIAL_CLUSTER_TOKEN: etcd-cluster
+      ETCD_ADVERTISE_CLIENT_URLS: "http://etcd2:2379"
+      ETCD_LISTEN_CLIENT_URLS: "http://0.0.0.0:2379"
+      ETCD_INITIAL_ADVERTISE_PEER_URLS: "http://etcd2:2380"
+      ETCD_LISTEN_PEER_URLS: "http://0.0.0.0:2380"
+    networks:
+      - aqualife_net
+
+  etcd3:
+    image: quay.io/coreos/etcd:v3.5.9
+    container_name: aqualife_etcd3
+    restart: unless-stopped
+    environment:
+      ETCD_NAME: etcd3
+      ETCD_INITIAL_CLUSTER: "etcd1=http://etcd1:2380,etcd2=http://etcd2:2380,etcd3=http://etcd3:2380"
+      ETCD_INITIAL_CLUSTER_STATE: new
+      ETCD_INITIAL_CLUSTER_TOKEN: etcd-cluster
+      ETCD_ADVERTISE_CLIENT_URLS: "http://etcd3:2379"
+      ETCD_LISTEN_CLIENT_URLS: "http://0.0.0.0:2379"
+      ETCD_INITIAL_ADVERTISE_PEER_URLS: "http://etcd3:2380"
+      ETCD_LISTEN_PEER_URLS: "http://0.0.0.0:2380"
+    networks:
+      - aqualife_net
+
+  # NoSQL tipo llave-valor en memoria (Redis).
+  redis:
+    image: redis:7
+    container_name: aqualife_redis
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - aqualife_net
+
+volumes:
+  mysql_data:
+    driver: local
+  mongo_data:
+    driver: local
+  neo4j_data:
+    driver: local
+  redis_data:
+    driver: local
+
+networks:
+  aqualife_net:
+    driver: bridge

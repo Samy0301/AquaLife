@@ -1,0 +1,25 @@
+# Archivos basura de Mac (aparecieron al subir tus archivos)
+._*
+.DS_Store
+
+# Archivos basura de Windows
+Thumbs.db
+desktop.ini
+
+# Editor
+.vscode/
+.idea/
+
+# Python / Jupyter (por si usan notebooks o generate_init_sql.py)
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+.venv/
+venv/
+
+# Variables de entorno y secretos
+.env
+
+# Archivos pesados generados (el init.sql tiene millones de filas)
+init.sql
+*.sql.gz
