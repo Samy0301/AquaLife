@@ -47,5 +47,6 @@ streamlit run app.py
 
 ## Convenciones del equipo
 - Cada consulta de la Tarea 3 va en `sql/queries/` con nombre tipo `3a_reacciones_por_publicacion.sql`
+- Una rama por issue con nombre tipo T3a-reacciones-por-publicacion-(#issue)
 - Triggers y procedimientos se crean con el usuario `root` (MySQL con binlog activo no deja a `aqualife_user` crear triggers sin `--log-bin-trust-function-creators=1`).
 - Una rama por tarea y pull request al repo.
