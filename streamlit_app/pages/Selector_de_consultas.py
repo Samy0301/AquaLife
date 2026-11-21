@@ -39,18 +39,12 @@ if not archivos_sql:
     st.warning(f"No hay archivos `.sql` dentro de `{dir_queri}`.")
     st.stop()
 
-# selector y botón de ejecucion
-col_sel, col_btn = st.columns([4, 1])
-with col_sel:
-    archivo = st.selectbox(
-        "Selecciona una consulta",
-        archivos_sql,
-        format_func=lambda p: p.stem.replace("_", " ").capitalize(),
-    )
-with col_btn:
-    st.write("")
-    st.write("")
-    st.button("🔄 Ejecutar", width="stretch")
+# selector 
+archivo = st.selectbox(
+    "Selecciona una consulta",
+    archivos_sql,
+    format_func=lambda p: p.stem.replace("_", " ").capitalize(),
+)
 
 sql_texto = archivo.read_text(encoding="utf-8-sig").strip()
 
