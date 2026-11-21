@@ -172,3 +172,33 @@ else:
     st.info(
         "Este producto todavía no tiene cambios registrados en Historial_Precios."
     )
+
+with st.expander("🌎 Consultar últimos 50 cambios globales"):
+
+    SQL_HISTORIAL_GLOBAL = """
+    SELECT
+        h.IDHist,
+        h.IDProd,
+        p.Nombre,
+        h.PrecioAnterior,
+        h.PrecioNuevo,
+        h.PorcentajeCambio,
+        h.FechaCambio,
+        h.HoraCambio,
+        h.Usuario
+    FROM Historial_Precios h
+    INNER JOIN Producto p ON h.IDProd = p.IDProd
+    ORDER BY h.IDHist DESC
+    LIMIT 50;
+    """
+
+    historial_global = run_query(SQL_HISTORIAL_GLOBAL)
+
+    if historial_global:
+        st.dataframe(
+            historial_global,
+            width="stretch",
+            hide_index=True
+        )
+    else:
+        st.info("Todavía no existen registros de auditoría.")
