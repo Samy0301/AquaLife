@@ -50,7 +50,7 @@ with col_sel:
 with col_btn:
     st.write("")
     st.write("")
-    st.button("🔄 Ejecutar", use_container_width=True)
+    st.button("🔄 Ejecutar", width="stretch")
 
 sql_texto = archivo.read_text(encoding="utf-8-sig").strip()
 
@@ -62,6 +62,7 @@ tab_tabla, tab_sql = st.tabs(["📋 Resultados", "💻 Ver SQL"])
 
 with tab_sql:
     st.code(sql_texto, language="sql")
+
 
 def dividir_sentencias_sql(sql: str) -> list[str]:
     sentencias = []
@@ -169,4 +170,12 @@ with tab_tabla:
             if len(tablas_resultado) > 1:
                 st.subheader(f"Resultado #{idx}")
             df = pd.DataFrame(filas)
-            st.dataframe(df, use_container_width=True, hide_index=True)
+            csv = df.to_csv(index=False).encode("utf-8-sig")
+            st.download_button(
+                label=f"⬇️ Descargar CSV{f' (#{idx})' if len(tablas_resultado) > 1 else ''}",
+                data=csv,
+                file_name=f"{archivo.stem}{f'_{idx}' if len(tablas_resultado) > 1 else ''}.csv",
+                mime="text/csv",
+                key=f"dl_{archivo.stem}_{idx}",
+            )
+            st.dataframe(df, width="stretch", hide_index=True)
