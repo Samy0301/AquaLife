@@ -119,3 +119,56 @@ if st.button("💾 Actualizar precio", type="primary"):
 
         else:
             st.error("No se pudo actualizar el precio.")
+
+st.subheader(f"📜 Historial de precios: {nombre}")
+
+SQL_HISTORIAL = """
+SELECT
+    IDProd,
+    PrecioAnterior,
+    PrecioNuevo,
+    PorcentajeCambio,
+    FechaCambio,
+    HoraCambio,
+    Usuario
+FROM Historial_Precios
+WHERE IDProd = %s
+ORDER BY IDHist DESC;
+"""
+
+historial = run_query(SQL_HISTORIAL, (id_prod,))
+
+if historial:
+
+    ultimo = historial[0]
+
+    c1, c2, c3 = st.columns(3)
+
+    c1.metric(
+        "Precio anterior",
+        f"${float(ultimo['PrecioAnterior']):.2f}"
+    )
+
+    c2.metric(
+        "Precio nuevo",
+        f"${float(ultimo['PrecioNuevo']):.2f}"
+    )
+
+    if ultimo["PorcentajeCambio"] is not None:
+        c3.metric(
+            "Variación",
+            f"{float(ultimo['PorcentajeCambio']):+.2f}%"
+        )
+    else:
+        c3.metric("Variación", "No calculable")
+
+    st.dataframe(
+        historial,
+        width="stretch",
+        hide_index=True
+    )
+
+else:
+    st.info(
+        "Este producto todavía no tiene cambios registrados en Historial_Precios."
+    )
