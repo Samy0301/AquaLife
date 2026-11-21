@@ -6,7 +6,7 @@ from neo4j import GraphDatabase
 import streamlit as st
 
 # Raíz del repo (streamlit_app/db.py → parents[1])
-REPO_ROOT = Path(__file__).resolve().parents[1]
+repo_root = Path(__file__).resolve().parents[1]
 
 MYSQL_CONFIG = {
     "host": "localhost",
@@ -58,7 +58,7 @@ def get_neo4j():
 
 
 def load_sql(rel_path: str) -> str:
-    return (REPO_ROOT / rel_path).read_text(encoding="utf-8")
+    return (repo_root / rel_path).read_text(encoding="utf-8")
 
 
 def _get_live_connection():
