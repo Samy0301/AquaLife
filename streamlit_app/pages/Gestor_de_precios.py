@@ -44,6 +44,7 @@ st.caption(f"Productos encontrados: {len(productos)}")
 
 st.dataframe(
     productos,
+    width="stretch",
     hide_index=True
 )
 
@@ -163,6 +164,7 @@ if historial:
 
     st.dataframe(
         historial,
+        width="stretch",
         hide_index=True
     )
 
@@ -195,6 +197,7 @@ with st.expander("🌎 Consultar últimos 50 cambios globales"):
     if historial_global:
         st.dataframe(
             historial_global,
+            width="stretch",
             hide_index=True
         )
     else:
