@@ -163,7 +163,10 @@ with tab_tabla:
         for idx, filas in enumerate(tablas_resultado, start=1):
             if len(tablas_resultado) > 1:
                 st.subheader(f"Resultado #{idx}")
+
+    
             df = pd.DataFrame(filas)
+            
             csv = df.to_csv(index=False).encode("utf-8-sig")
             st.download_button(
                 label=f"⬇️ Descargar CSV{f' (#{idx})' if len(tablas_resultado) > 1 else ''}",
@@ -172,4 +175,4 @@ with tab_tabla:
                 mime="text/csv",
                 key=f"dl_{archivo.stem}_{idx}",
             )
-            st.dataframe(df, width="stretch", hide_index=True)
+            st.dataframe(df, hide_index=True)
