@@ -1,6 +1,6 @@
-streamlit>=1.40
-mysql-connector-python>=9.0
-python-dotenv>=1.0
-pandas>=2.0
-pymongo>=4.9
-neo4j>=5.0
+streamlit==1.40
+mysql-connector-python==9.0
+python-dotenv==1.0
+pandas==2.3
+pymongo==4.9
+neo4j==5.0
