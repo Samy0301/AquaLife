@@ -1,6 +1,6 @@
 import streamlit as st
 from datetime import date
-from db import run_query
+from db import run_query, call_procedure
 
 
 st.set_page_config(
@@ -118,3 +118,114 @@ with st.form("form_analisis_usuario"):
     f_ini = c2.date_input("Fecha inicial", value=date(2020, 1, 1))
     f_fin = c3.date_input("Fecha final", value=date.today())
     enviar = st.form_submit_button("🔍 Analizar actividad", type="primary")
+
+    if enviar:
+        if f_ini > f_fin:
+            st.error("La fecha inicial no puede ser posterior a la fecha final.")
+        else:
+            resultados = call_procedure("sp_analisis_usuario", (int(user_id), f_ini, f_fin))
+
+        if not resultados:
+            st.warning(
+                "No se obtuvieron datos del procedimiento almacenado. "
+                "Verifica la conexión a MySQL y que `sp_analisis_usuario` esté creado."
+            )
+        else:
+            row = resultados[0]
+            nombre = row.get("nombre")
+
+            if nombre is None:
+                st.warning(
+                    f"No existe ningún usuario registrado con el ID **{int(user_id)}**."
+                )
+            else:
+                publicaciones = int(row.get("publicaciones") or 0)
+                reacciones_dadas = int(row.get("reacciones_dadas") or 0)
+                reacciones_recibidas = int(row.get("reacciones_recibidas") or 0)
+                comentarios = int(row.get("comentarios") or 0)
+                compras = int(row.get("compras") or 0)
+                monto_gastado = float(row.get("monto_gastado") or 0.0)
+                contribuciones = int(row.get("contribuciones") or 0)
+                esp_comprada = row.get("especie_mas_comprada")
+                esp_contribuida = row.get("especie_mas_contribuida")
+                st.divider()
+
+                # Encabezado del perfil consultado
+                st.markdown(
+                    f"""
+                    <div class="module-card">
+                        <h4>🪪 Perfil analizado: {nombre} (ID #{int(user_id)})</h4>
+                        <p>Período consultado: del <strong>{f_ini.strftime('%d/%m/%Y')}</strong>
+                        al <strong>{f_fin.strftime('%d/%m/%Y')}</strong></p>
+                    </div>
+                    """,
+                    unsafe_allow_html=True,
+                )
+
+                st.write("")
+
+                # Métricas de interacción social
+                st.subheader("💬 Actividad en la comunidad")
+                m1, m2, m3, m4 = st.columns(4)
+                m1.metric("📝 Publicaciones", f"{publicaciones:,}")
+                m2.metric("👍 Reacciones dadas", f"{reacciones_dadas:,}")
+                ratio_reacc = (
+                    f"{reacciones_recibidas / publicaciones:.1f} / pub."
+                    if publicaciones > 0
+                    else "Sin publicaciones"
+                )
+                m3.metric(
+                    "❤️ Reacciones recibidas",
+                    f"{reacciones_recibidas:,}",
+                    delta=ratio_reacc,
+                    delta_color="off",
+                )
+                m4.metric("💭 Comentarios", f"{comentarios:,}")
+
+                st.write("")
+
+                # Métricas de contribuciones y compras
+                st.subheader("🛒 Contribuciones y actividad comercial")
+                k1, k2, k3 = st.columns(3)
+                k1.metric("📘 Contribuciones (bitácoras)", f"{contribuciones:,}")
+                k2.metric("🛍️ Compras realizadas", f"{compras:,}")
+                ticket_prom = (
+                    f"Prom. ${monto_gastado / compras:,.2f} / compra"
+                    if compras > 0
+                    else "Sin compras"
+                )
+                k3.metric(
+                    "💲 Monto gastado",
+                    f"${monto_gastado:,.2f}",
+                    delta=ticket_prom,
+                    delta_color="off",
+                )
+
+                st.write("")
+
+                # Especies destacadas
+                e1, e2 = st.columns(2)
+                with e1:
+                    st.markdown(
+                        f"""
+                        <div class="module-card">
+                            <h4>🐠 Especie más comprada</h4>
+                            <div class="highlight-value">
+                                {esp_comprada if esp_comprada else "Sin compras en el período"}
+                            </div>
+                        </div>
+                        """,
+                        unsafe_allow_html=True,
+                    )
+                with e2:
+                    st.markdown(
+                        f"""
+                        <div class="module-card">
+                            <h4>🌿 Especie más contribuida</h4>
+                            <div class="highlight-value">
+                                {esp_contribuida if esp_contribuida else "Sin contribuciones en el período"}
+                            </div>
+                        </div>
+                        """,
+                        unsafe_allow_html=True,
+                    )
