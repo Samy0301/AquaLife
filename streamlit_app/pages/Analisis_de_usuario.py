@@ -1,4 +1,6 @@
 import streamlit as st
+from datetime import date
+from db import run_query
 
 
 st.set_page_config(
@@ -89,3 +91,30 @@ st.markdown(
 with st.sidebar:
     st.markdown("### 🐠 AquaLife")
     st.caption("Sistema de soporte a decisiones · AquaSolutions (2026-2027)")
+    # Cargar usuarios disponibles mediante SQL explícito para facilitar la selección
+usuarios = run_query("SELECT IDU, Nombre FROM Usuario ORDER BY IDU")
+
+modo = "Ingresar ID manualmente"
+if usuarios:
+    modo = st.radio(
+        "Selección del acuarista",
+        options=["Elegir de la lista", "Ingresar ID manualmente"],
+        horizontal=True,
+    )
+
+with st.form("form_analisis_usuario"):
+    c1, c2, c3 = st.columns([2, 1, 1])
+
+    if modo == "Elegir de la lista" and usuarios:
+        opciones = {u["IDU"]: f"#{u['IDU']} · {u['Nombre']}" for u in usuarios}
+        user_id = c1.selectbox(
+            "Usuario",
+            options=list(opciones.keys()),
+            format_func=lambda uid: opciones[uid],
+        )
+    else:
+        user_id = c1.number_input("ID de usuario (IDU)", min_value=1, step=1, value=1)
+
+    f_ini = c2.date_input("Fecha inicial", value=date(2020, 1, 1))
+    f_fin = c3.date_input("Fecha final", value=date.today())
+    enviar = st.form_submit_button("🔍 Analizar actividad", type="primary")
