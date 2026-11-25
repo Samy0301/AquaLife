@@ -1,7 +1,8 @@
-import streamlit as st
 from datetime import date
-from db import run_query, call_procedure
+import pandas as pd
+import streamlit as st
 
+from db import call_procedure, run_query
 
 st.set_page_config(
     page_title="AquaLife · Análisis de Usuario",
@@ -10,7 +11,7 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
-# Estilos coherentes con app.py
+# Estilos 
 st.markdown(
     """
     <style>
@@ -91,7 +92,8 @@ st.markdown(
 with st.sidebar:
     st.markdown("### 🐠 AquaLife")
     st.caption("Sistema de soporte a decisiones · AquaSolutions (2026-2027)")
-    # Cargar usuarios disponibles mediante SQL explícito para facilitar la selección
+
+# Cargar usuarios disponibles 
 usuarios = run_query("SELECT IDU, Nombre FROM Usuario ORDER BY IDU")
 
 modo = "Ingresar ID manualmente"
@@ -119,11 +121,11 @@ with st.form("form_analisis_usuario"):
     f_fin = c3.date_input("Fecha final", value=date.today())
     enviar = st.form_submit_button("🔍 Analizar actividad", type="primary")
 
-    if enviar:
-        if f_ini > f_fin:
-            st.error("La fecha inicial no puede ser posterior a la fecha final.")
-        else:
-            resultados = call_procedure("sp_analisis_usuario", (int(user_id), f_ini, f_fin))
+if enviar:
+    if f_ini > f_fin:
+        st.error("La fecha inicial no puede ser posterior a la fecha final.")
+    else:
+        resultados = call_procedure("sp_analisis_usuario", (int(user_id), f_ini, f_fin))
 
         if not resultados:
             st.warning(
@@ -148,6 +150,7 @@ with st.form("form_analisis_usuario"):
                 contribuciones = int(row.get("contribuciones") or 0)
                 esp_comprada = row.get("especie_mas_comprada")
                 esp_contribuida = row.get("especie_mas_contribuida")
+
                 st.divider()
 
                 # Encabezado del perfil consultado
@@ -229,3 +232,67 @@ with st.form("form_analisis_usuario"):
                         """,
                         unsafe_allow_html=True,
                     )
+
+                st.divider()
+
+                # Gráfico y tabla resumen
+                g_col, t_col = st.columns([3, 2])
+
+                actividad_df = pd.DataFrame(
+                    {
+                        "Indicador": [
+                            "Publicaciones",
+                            "Reacciones dadas",
+                            "Reacciones recibidas",
+                            "Comentarios",
+                            "Contribuciones",
+                            "Compras",
+                        ],
+                        "Cantidad": [
+                            publicaciones,
+                            reacciones_dadas,
+                            reacciones_recibidas,
+                            comentarios,
+                            contribuciones,
+                            compras,
+                        ],
+                    }
+                )
+
+                with g_col:
+                    st.subheader("📊 Distribución de actividad")
+                    st.bar_chart(
+                        actividad_df.set_index("Indicador"),
+                        width="stretch",
+                        color="#1481ba",
+                    )
+
+                with t_col:
+                    st.subheader("📋 Resumen del perfil")
+                    resumen_df = pd.DataFrame(
+                        [
+                            {"Métrica": "Nombre", "Valor": nombre},
+                            {"Métrica": "Publicaciones", "Valor": str(publicaciones)},
+                            {"Métrica": "Reacciones dadas", "Valor": str(reacciones_dadas)},
+                            {"Métrica": "Reacciones recibidas", "Valor": str(reacciones_recibidas)},
+                            {"Métrica": "Comentarios realizados", "Valor": str(comentarios)},
+                            {"Métrica": "Contribuciones", "Valor": str(contribuciones)},
+                            {"Métrica": "Compras realizadas", "Valor": str(compras)},
+                            {"Métrica": "Monto gastado", "Valor": f"${monto_gastado:,.2f}"},
+                            {
+                                "Métrica": "Especie más comprada",
+                                "Valor": esp_comprada or "—",
+                            },
+                            {
+                                "Métrica": "Especie más contribuida",
+                                "Valor": esp_contribuida or "—",
+                            },
+                        ]
+                    )
+                    st.dataframe(resumen_df, hide_index=True, width="stretch")
+
+                with st.expander("🔎 Ver resultado directo de `sp_analisis_usuario`"):
+                    st.dataframe(pd.DataFrame(resultados), hide_index=True, width="stretch")
+
+st.divider()
+st.caption("AquaSolutions · Departamento de Analítica de Datos · Bases de Datos 2026-2027")
