@@ -1,23 +1,14 @@
-
 import random
 from pymongo import  MongoClient,ASCENDING
 import mysql.connector
 from datetime import datetime,timezone
+from streamlit_app.db import MONGO_URI, MYSQL_CONFIG
 
 # configuracion para conectarse a la bd de mongodb
-MONGO_URI = "mongodb://admin:password@localhost:27017/?authSource=admin"
 BASE_DATOS = "aqualife_docs"
 COLECCION_FICHAS = "fichas_especie"
 COLECCION_SECUNDARIOS = "documentos_secundarios"
 
-# configuracion para conectarse a la bd de mysql
-MYSQL_CONFIG = {
-    "host": "localhost",
-    "port": 3306,
-    "user": "root",
-    "password": "root",
-    "database": "AquaLife",
-}
 
 # id de ejemplo para buscar puede ser del 1 al 4000, fuere de ese rango la consulta de ejemplo dara como resultado None ( porque no existe) 
 #ID =4000
