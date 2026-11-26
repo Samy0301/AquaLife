@@ -55,7 +55,6 @@ def fecha(aaaa, mm, dd):
     """Fecha UTC sin hora ."""
     return datetime(aaaa, mm, dd, tzinfo=timezone.utc)
 
-
 def obtener_documentos_especie(db,id_especie):
     """Dado el identificador de una especie (el mismo que en la base
     relacional, Especie.IDProd), retorna su ficha con todos sus documentos
@@ -104,8 +103,6 @@ def obtener_documentos_especie(db,id_especie):
         resumen[doc["tipo"]] = resumen.get(doc["tipo"], 0) + 1
     resultado["resumenSecundarios"] = resumen
     return resultado
-
-
 
 def insertar(fichas,secundarios):
 
