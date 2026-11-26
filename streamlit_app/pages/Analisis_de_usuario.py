@@ -263,7 +263,6 @@ if enviar:
                     st.subheader("📊 Distribución de actividad")
                     st.bar_chart(
                         actividad_df.set_index("Indicador"),
-                        width="stretch",
                         color="#1481ba",
                     )
 
@@ -289,10 +288,10 @@ if enviar:
                             },
                         ]
                     )
-                    st.dataframe(resumen_df, hide_index=True, width="stretch")
+                    st.dataframe(resumen_df, hide_index=True)
 
                 with st.expander("🔎 Ver resultado directo de `sp_analisis_usuario`"):
-                    st.dataframe(pd.DataFrame(resultados), hide_index=True, width="stretch")
+                    st.dataframe(pd.DataFrame(resultados), hide_index=True)
 
 st.divider()
 st.caption("AquaSolutions · Departamento de Analítica de Datos · Bases de Datos 2026-2027")

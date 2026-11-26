@@ -1,8 +1,17 @@
+import importlib.util
 import random
+import sys
+from pathlib import Path
 from pymongo import  MongoClient,ASCENDING
 import mysql.connector
 from datetime import datetime,timezone
-from streamlit_app.db import MONGO_URI, MYSQL_CONFIG
+# Streamlit ejecuta las páginas con `streamlit_app/` en sys.path (=> `from db import ...`).
+# Al ejecutar este archivo de forma independiente desde la raíz del repo, el módulo
+# se encuentra como `streamlit_app.db`. Se admiten ambos contextos.
+try:
+    from db import MONGO_URI, MYSQL_CONFIG
+except ModuleNotFoundError:
+    from streamlit_app.db import MONGO_URI, MYSQL_CONFIG
 
 # configuracion para conectarse a la bd de mongodb
 BASE_DATOS = "aqualife_docs"
@@ -30,6 +39,58 @@ def consulta(query,params=None):
     cur.execute(query, params or ())
     rows = cur.fetchall()
     return rows
+
+
+CONSULTA_ESPECIES = """SELECT e.IDProd,e.NombreCientifico,e.NombreComun,e.TipoSustrato,e.Categoria,e.HorasLuz,e.LitrosMinimosTanque,ta.Tipo,t.Nombre,ce.Descripcion FROM Especie e JOIN TipoAgua ta ON e.IDTA =ta.IDTA JOIN Temporada t ON e.IDT =t.IDT JOIN Cuidados_Especificos ce ON e.IDCE =ce.IDCE"""
+
+
+def _cargar_generador():
+    """Carga generate_init_sql.py desde la raíz del repo para reutilizar sus catálogos."""
+    nombre = "aqualife_generador_init"
+    if nombre in sys.modules:
+        return sys.modules[nombre]
+    ruta = Path(__file__).resolve().parents[2] / "generate_init_sql.py"
+    spec = importlib.util.spec_from_file_location(nombre, ruta)
+    modulo = importlib.util.module_from_spec(spec)
+    sys.modules[nombre] = modulo
+    spec.loader.exec_module(modulo)
+    return modulo
+
+
+def filas_especie():
+    """Devuelve las filas de origen para las fichas.
+
+    Primero intenta leerlas de MySQL. Si las tablas de especies están vacías
+    (init.sql incompleto), genera las mismas filas con los catálogos de
+    generate_init_sql.py para que la colección de MongoDB nunca quede vacía.
+    """
+    try:
+        filas = consulta(CONSULTA_ESPECIES)
+        if filas:
+            return filas
+    except Exception:
+        # MySQL no disponible: se generan las filas localmente.
+        pass
+
+    gen = _cargar_generador()
+    gen.random.seed(2026)
+    _, especies_info = gen.gen_especies_productos(gen.CONFIG["especies"])
+    tipos_agua = gen.gen_tipos_agua(gen.CONFIG["tipos_agua"])
+    cuidados = gen.gen_cuidados_especificos(gen.CONFIG["cuidados_especificos"])
+    temporadas = gen.TEMPORADAS
+    generadas = gen.gen_especies(especies_info, len(tipos_agua), len(temporadas), len(cuidados))
+
+    tipos = {i: fila[0] for i, fila in enumerate(tipos_agua, start=1)}
+    temps = {i: nombre for i, nombre in enumerate(temporadas, start=1)}
+    cuidados_map = {i: fila[0] for i, fila in enumerate(cuidados, start=1)}
+
+    return [
+        (idp, namecien, namecom, sustrato, categ, horas, litros,
+         tipos.get(id_ta, "Sin definir"), temps.get(id_t, "Sin definir"),
+         cuidados_map.get(id_ce, "Sin definir"))
+        for (idp, namecien, namecom, sustrato, categ, horas, litros,
+             id_ta, id_t, id_ce) in generadas
+    ]
 
 def generar_min_max(a,b):
     """"para generar dos valores val1<val2 aleatorios en el rango a,b"""
@@ -101,7 +162,7 @@ def insertar(fichas,secundarios):
     fichas.delete_many({})
     secundarios.delete_many({})
       # consulta para retornar los filas y columnas necesarios 
-    tabla_especie = consulta("""SELECT e.IDProd,e.NombreCientifico,e.NombreComun,e.TipoSustrato,e.Categoria,e.HorasLuz,e.LitrosMinimosTanque,ta.Tipo,t.Nombre,ce.Descripcion FROM Especie e JOIN TipoAgua ta ON e.IDTA =ta.IDTA JOIN Temporada t ON e.IDT =t.IDT JOIN Cuidados_Especificos ce ON e.IDCE =ce.IDCE""")
+    tabla_especie = filas_especie()
 
     niveles_de_cuidado = ['Facil',"Medio","Dificil","Muy Dificil"]
     resultados = ["Apto","No Apto"]
@@ -170,7 +231,7 @@ def insertar(fichas,secundarios):
                                 "fechaEmision": fecha(2026, 1, 10),
                                 "fechaVencimiento": fecha(random.randint(2026,2030), random.randint(1,12), random.randint(1,27)),
                                 "resultado":resultado ,
-                                "observaciones": f"Sin parásitos externos visibles; aletas intactas; cuarentena de {semanas} semanas completada." if resultado ==" Apto" else "Con parásitos visibles; cuarentena de {semanas} semanas para curarse",
+                                "observaciones": f"Sin parásitos externos visibles; aletas intactas; cuarentena de {semanas} semanas completada." if resultado == "Apto" else f"Con parásitos visibles; cuarentena de {semanas} semanas para curarse",
                             },
                             {
                                 "tipo": "Guía de Alimentación Estacional",
