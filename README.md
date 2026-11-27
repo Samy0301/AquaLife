@@ -15,6 +15,7 @@ Panel de control en Streamlit sobre la base de datos AquaLife (MySQL).
 ├── sql/
 │   ├── queries/            # Consultas Tarea 3 (3a–3e - 3h-3i) (un .sql por consulta; las lee el selector)
 │   ├── conversations/      # Tarea 4a
+│   ├── migrations/         # Tarea 4a (cambios a la base)
 │   ├── procedures/         # sp_analisis_usuario (3g)
 │   └── triggers/           # Trigger de auditoría de precios (3f)
 ├── nosql/
