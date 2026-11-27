@@ -2,7 +2,7 @@ from datetime import date
 import pandas as pd
 import streamlit as st
 
-from db import call_procedure, run_query
+from db import call_procedure, ensure_db_objects, run_query
 
 st.set_page_config(
     page_title="AquaLife · Análisis de Usuario",
@@ -10,6 +10,8 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="expanded",
 )
+
+ensure_db_objects()
 
 # Estilos 
 st.markdown(
