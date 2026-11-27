@@ -2,7 +2,7 @@ from datetime import date
 import pandas as pd
 import streamlit as st
 
-from db import call_procedure, run_query
+from db import call_procedure, ensure_db_objects, run_query
 
 st.set_page_config(
     page_title="AquaLife · Análisis de Usuario",
@@ -10,6 +10,8 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="expanded",
 )
+
+ensure_db_objects()
 
 # Estilos 
 st.markdown(
@@ -263,7 +265,6 @@ if enviar:
                     st.subheader("📊 Distribución de actividad")
                     st.bar_chart(
                         actividad_df.set_index("Indicador"),
-                        width="stretch",
                         color="#1481ba",
                     )
 
@@ -289,10 +290,10 @@ if enviar:
                             },
                         ]
                     )
-                    st.dataframe(resumen_df, hide_index=True, width="stretch")
+                    st.dataframe(resumen_df, hide_index=True)
 
                 with st.expander("🔎 Ver resultado directo de `sp_analisis_usuario`"):
-                    st.dataframe(pd.DataFrame(resultados), hide_index=True, width="stretch")
+                    st.dataframe(pd.DataFrame(resultados), hide_index=True)
 
 st.divider()
 st.caption("AquaSolutions · Departamento de Analítica de Datos · Bases de Datos 2026-2027")

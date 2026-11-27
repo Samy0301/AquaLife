@@ -1,5 +1,5 @@
 import streamlit as st
-from db import get_mysql, get_mongo, get_neo4j
+from db import ensure_db_objects, get_mysql, get_mongo, get_neo4j
 
 st.set_page_config(
     page_title="AquaLife · Panel de Control",
@@ -88,11 +88,15 @@ mysql_ok = get_mysql() is not None
 mongo_ok = get_mongo() is not None
 neo4j_ok = get_neo4j() is not None
 
+
+if mysql_ok:
+    ensure_db_objects()
+
 c1, c2, c3 = st.columns(3)
 
 with c1:
     if mysql_ok:
-        st.success("✅ **MySQL** · Conectado")
+        st.success("✅ **MySQL** · Conectado")    
     else:
         st.error("❌ **MySQL** · Sin conexión")
     st.caption("Núcleo transaccional, analítica SQL, `sp_analisis_usuario` y auditoría de precios.")

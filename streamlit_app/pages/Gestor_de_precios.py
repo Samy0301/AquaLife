@@ -1,11 +1,13 @@
 import streamlit as st
-from db import run_query, execute
+from db import ensure_db_objects, execute, run_query
 
 st.set_page_config(
     page_title="Gestor de Precios · AquaLife",
     page_icon="💲",
     layout="wide"
 )
+
+ensure_db_objects()
 
 st.title("💲 Gestor y Auditoría de Precios")
 
