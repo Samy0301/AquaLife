@@ -4,7 +4,7 @@ import mysql.connector
 from neo4j import GraphDatabase
 
 try:
-    from db import NEO4J_URI, NEO4J_USER ,NEO4J_PASSWORD , MYSQL_CONFIG
+    from streamlit_app.db import NEO4J_URI, NEO4J_USER ,NEO4J_PASSWORD , MYSQL_CONFIG
 except ModuleNotFoundError:
     from streamlit_app.db import NEO4J_URI, NEO4J_USER ,NEO4J_PASSWORD , MYSQL_CONFIG
 
@@ -18,7 +18,6 @@ def cargar():
     rows = cur.fetchall()
     cur.close()
     conn.close()
- 
     
     with GraphDatabase.driver(NEO4J_URI, auth=(NEO4J_USER, NEO4J_PASSWORD)) as driver, driver.session() as s:
         s.run("CREATE CONSTRAINT comentario_idc IF NOT EXISTS FOR (c:Comentario) REQUIRE c.IDC IS UNIQUE")
@@ -29,7 +28,7 @@ def cargar():
         s.run("""
             UNWIND $rows AS r
             MERGE (c:Comentario {IDC: r.IDC})
-              SET c.comentario = r.comentario
+            SET c.comentario = r.comentario
             MERGE (u:Usuario {IDU: r.IDU})
             MERGE (p:Publicacion {IDPub: r.IDPub})
             MERGE (u)-[:ESCRIBIO]->(c)
@@ -49,13 +48,13 @@ def cargar():
 # Obtener un hilo interno mediante un IDC (Lista de dicts)
 
 def obtener_hilo(idc):
-   # Obtener un hilo interno mediante un IDC (Lista de dicts)
+    # Obtener un hilo interno mediante un IDC (Lista de dicts)
     query = """
         MATCH path = (c:Comentario)-[:RESPONDE_A*0..]->(raiz:Comentario {IDC: $idc})
         OPTIONAL MATCH (c)-[:RESPONDE_A]->(padre:Comentario)
         MATCH (u:Usuario)-[:ESCRIBIO]->(c)
         RETURN c.IDC AS IDC, padre.IDC AS IDC_Padre, u.IDU AS IDU,
-               c.comentario AS comentario, length(path) AS Nivel
+            c.comentario AS comentario, length(path) AS Nivel
         ORDER BY Nivel, IDC
     """
     with GraphDatabase.driver(NEO4J_URI, auth=(NEO4J_USER, NEO4J_PASSWORD)) as driver, driver.session() as s:
