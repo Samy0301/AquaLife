@@ -152,20 +152,19 @@ if db_docs[tarea5.COLECCION_FICHAS].count_documents({}, limit=1) == 0:
 fichas_col = db_docs[tarea5.COLECCION_FICHAS]
 secundarios_col = db_docs[tarea5.COLECCION_SECUNDARIOS]
 
-# Si todavía no se ejecutó insertar() de tarea5.py, permitir hacerlo desde aquí
+# Si todavía no se ejecutó insertar() de tarea5.py, hacerlo automáticamente al cargar
 if fichas_col.count_documents({}, limit=1) == 0:
-    st.warning(
-        f"La colección `{db_docs.name}.{tarea5.COLECCION_FICHAS}` todavía no tiene documentos."
-    )
-    if st.button("📥 Cargar fichas y documentos de prueba desde MySQL (nosql/mongo/tarea5.py)", type="primary"):
-        with st.spinner("Generando fichas y documentos secundarios en MongoDB..."):
-            try:
-                tarea5.insertar(fichas_col, secundarios_col)
-                st.success("Documentos insertados correctamente. Recargando...")
-                st.rerun()
-            except Exception as e:
-                st.error(f"Error al ejecutar insertar() de nosql/mongo/tarea5.py: {e}")
-    st.stop()
+    with st.spinner("Generando fichas y documentos secundarios en MongoDB..."):
+        try:
+            tarea5.insertar(fichas_col, secundarios_col)
+            if fichas_col.count_documents({}, limit=1) == 0:
+                st.error("No se insertaron fichas. Revisa la conexión con las fuentes de datos.")
+                st.stop()
+            st.success("Fichas y documentos generados correctamente. Recargando...")
+            st.rerun()
+        except Exception as e:
+            st.error(f"Error al ejecutar insertar() de nosql/mongo/tarea5.py: {e}")
+            st.stop()
 
 # Traer catálogo resumido de especies desde mongo para el selector
 lista_fichas = list(
@@ -304,7 +303,7 @@ if resumen:
     resumen_df = pd.DataFrame(
         [{"Tipo de documento": k, "Cantidad": v} for k, v in resumen.items()]
     )
-    st.dataframe(resumen_df, hide_index=True, width="stretch")
+    st.dataframe(resumen_df, hide_index=True)
 
 tipos_disponibles = ["Todos"] + list(resumen.keys())
 tipo_filtro = st.selectbox("Filtrar documentos secundarios por tipo", tipos_disponibles)
@@ -357,7 +356,7 @@ for idx, doc in enumerate(docs_filtrados, start=1):
                 st.info("No hay enfermedades registradas en este manual.")
             else:
                 enf_df = pd.DataFrame(enfermedades)
-                st.dataframe(enf_df, hide_index=True, width="stretch")
+                st.dataframe(enf_df, hide_index=True)
 
         else:
             # documentos referenciados (historial de crecimiento / análisis de agua)
