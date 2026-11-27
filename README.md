@@ -41,8 +41,7 @@ source .venv/bin/activate
 pip install -r requirements.txt
 
 # 4. App
-cd streamlit_app
-streamlit run app.py
+streamlit run streamlit_app/app.py
 ```
 
 ## Convenciones del equipo
