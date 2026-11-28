@@ -8,7 +8,7 @@ Panel de control en Streamlit sobre la base de datos AquaLife (MySQL).
 .
 ├── docker-compose.yml, Dockerfile, generate_init_sql.py, 000-hash-init.sh, zzz-cleanup.sh
 │                           # Infraestructura (MySQL, MongoDB, Neo4j, MonetDB, etcd, Redis)
-├── streamlit_app/          # Traea 6
+├── streamlit_app/          # Tarea 6
 │   ├── app.py              # Página principal (estado de conexión)
 │   ├── db.py               # Conexión y helpers SQL (run_query, execute, call_procedure)
 │   └── pages/              # Una página por funcionalidad 
