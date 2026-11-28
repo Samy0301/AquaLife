@@ -1,6 +1,7 @@
 from datetime import date
 import pandas as pd
 import streamlit as st
+import altair as alt
 
 from db import call_procedure, ensure_db_objects, run_query
 
@@ -241,59 +242,59 @@ if enviar:
                 g_col, t_col = st.columns([3, 2])
 
                 actividad_df = pd.DataFrame(
-                    {
-                        "Indicador": [
-                            "Publicaciones",
-                            "Reacciones dadas",
-                            "Reacciones recibidas",
-                            "Comentarios",
-                            "Contribuciones",
-                            "Compras",
-                        ],
-                        "Cantidad": [
-                            publicaciones,
-                            reacciones_dadas,
-                            reacciones_recibidas,
-                            comentarios,
-                            contribuciones,
-                            compras,
-                        ],
-                    }
+                    [
+                        {"Indicador": "Publicaciones", "Cantidad": publicaciones, "Área": "Comunidad"},
+                        {"Indicador": "Comentarios", "Cantidad": comentarios, "Área": "Comunidad"},
+                        {"Indicador": "Reacciones dadas", "Cantidad": reacciones_dadas, "Área": "Comunidad"},
+                        {"Indicador": "Reacciones recibidas", "Cantidad": reacciones_recibidas, "Área": "Comunidad"},
+                        {"Indicador": "Contribuciones", "Cantidad": contribuciones, "Área": "Aportes y tienda"},
+                        {"Indicador": "Compras", "Cantidad": compras, "Área": "Aportes y tienda"},
+                    ]
                 )
 
                 with g_col:
                     st.subheader("📊 Distribución de actividad")
-                    st.bar_chart(
-                        actividad_df.set_index("Indicador"),
+
+                    base = alt.Chart(actividad_df).encode(
+                        y=alt.Y(
+                            "Indicador:N",
+                            sort="-x",
+                            title=None,
+                            axis=alt.Axis(labelLimit=180, labelFontSize=12),
+                        ),
+                        x=alt.X(
+                            "Cantidad:Q",
+                            title="Cantidad",
+                            scale=alt.Scale(domainMin=0),
+                            axis=alt.Axis(tickMinStep=1),
+                        ),
+                        tooltip=["Indicador", "Área", "Cantidad"],
+                    )
+
+                    barras = base.mark_bar(
+                        cornerRadiusTopRight=6,
+                        cornerRadiusBottomRight=6,
+                        size=24,
+                    ).encode(
+                        color=alt.Color(
+                            "Área:N",
+                            scale=alt.Scale(
+                                domain=["Comunidad", "Aportes y tienda"],
+                                range=["#1481ba", "#17bebb"],
+                            ),
+                            legend=alt.Legend(orient="top", title=None),
+                        )
+                    )
+
+                    etiquetas = base.mark_text(
+                        align="left",
+                        baseline="middle",
+                        dx=6,
+                        fontWeight="bold",
                         color="#1481ba",
-                    )
+                    ).encode(text="Cantidad:Q")
 
-                with t_col:
-                    st.subheader("📋 Resumen del perfil")
-                    resumen_df = pd.DataFrame(
-                        [
-                            {"Métrica": "Nombre", "Valor": nombre},
-                            {"Métrica": "Publicaciones", "Valor": str(publicaciones)},
-                            {"Métrica": "Reacciones dadas", "Valor": str(reacciones_dadas)},
-                            {"Métrica": "Reacciones recibidas", "Valor": str(reacciones_recibidas)},
-                            {"Métrica": "Comentarios realizados", "Valor": str(comentarios)},
-                            {"Métrica": "Contribuciones", "Valor": str(contribuciones)},
-                            {"Métrica": "Compras realizadas", "Valor": str(compras)},
-                            {"Métrica": "Monto gastado", "Valor": f"${monto_gastado:,.2f}"},
-                            {
-                                "Métrica": "Especie más comprada",
-                                "Valor": esp_comprada or "—",
-                            },
-                            {
-                                "Métrica": "Especie más contribuida",
-                                "Valor": esp_contribuida or "—",
-                            },
-                        ]
-                    )
-                    st.dataframe(resumen_df, hide_index=True)
-
-                with st.expander("🔎 Ver resultado directo de `sp_analisis_usuario`"):
-                    st.dataframe(pd.DataFrame(resultados), hide_index=True)
+                    st.altair_chart((barras + etiquetas).properties(height=300))
 
 st.divider()
 st.caption("AquaSolutions · Departamento de Analítica de Datos · Bases de Datos 2026-2027")
