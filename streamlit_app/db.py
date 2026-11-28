@@ -20,6 +20,7 @@ MYSQL_CONFIG = {
     "user": "root",
     "password": "root",
     "database": "AquaLife",
+    "buffered": True,
 }
 
 MONGO_URI = "mongodb://admin:password@localhost:27017/?authSource=admin"
@@ -93,18 +94,22 @@ def _extract_create_table(sql_text: str, table: str) -> str:
 
 
 def _get_live_connection():
-    """Devuelve una conexión MySQL viva, reconectando si es necesario."""
+    """Devuelve una conexión MySQL viva, regenerándola si quedó en mal estado."""
     conn = get_mysql()
     if conn is None:
         return None
     try:
         if not conn.is_connected():
             conn.reconnect(attempts=3, delay=1)
-    except Error as e:
-        st.error(f"MySQL (reconexión): {e}")
-        return None
-    return conn
-
+        return conn
+    except Error:
+        # Si quedó un resultado sin leer o se rompió la sesión, cerramos y limpiamos la caché para abrir una conexión limpia.
+        try:
+            conn.close()
+        except Exception:
+            pass
+        get_mysql.clear()
+        return get_mysql()
 
 def _object_exists(
     conn, schema_view: str, schema_col: str, name_col: str, name: str, extra: str = ""
@@ -173,46 +178,128 @@ def run_query(sql: str, params=None) -> list:
     conn = _get_live_connection()
     if conn is None:
         return []
+    cur = None
     try:
-        cur = conn.cursor(dictionary=True)
+        cur = conn.cursor(dictionary=True, buffered=True)
         cur.execute(sql, params or ())
         rows = cur.fetchall()
-        cur.close()
+        conn.commit()
         return rows
     except Error as e:
         st.error(f"Error en consulta: {e}")
         return []
+    finally:
+        if cur is not None:
+            cur.close()
 
 
 def execute(sql: str, params=None) -> int:
     conn = _get_live_connection()
     if conn is None:
         return -1
+    cur = None
     try:
-        cur = conn.cursor()
+        cur = conn.cursor(buffered=True)
         cur.execute(sql, params or ())
         conn.commit()
-        n = cur.rowcount
-        cur.close()
-        return n
+        return cur.rowcount
     except Error as e:
         conn.rollback()
         st.error(f"Error en operación: {e}")
         return -1
+    finally:
+        if cur is not None:
+            cur.close()
 
 
 def call_procedure(name: str, params: tuple) -> list:
     conn = _get_live_connection()
     if conn is None:
         return []
+    cur = None
     try:
-        cur = conn.cursor(dictionary=True)
+        cur = conn.cursor(dictionary=True, buffered=True)
         cur.callproc(name, params)
         out = []
         for res in cur.stored_results():
             out.extend(res.fetchall())
-        cur.close()
+        conn.commit()
         return out
     except Error as e:
         st.error(f"Error en {name}: {e}")
         return []
+    finally:
+        if cur is not None:
+            cur.close()
+
+def dividir_sentencias_sql(sql: str) -> list[str]:
+    sentencias = []
+    actual = []
+    en_simple = False
+    en_doble = False
+    en_linea = False
+    en_bloque = False
+    i = 0
+    n = len(sql)
+
+    while i < n:
+        c = sql[i]
+        sig = sql[i + 1] if i + 1 < n else ""
+
+        if en_linea:
+            actual.append(c)
+            if c == "\n":
+                en_linea = False
+        elif en_bloque:
+            actual.append(c)
+            if c == "*" and sig == "/":
+                actual.append(sig)
+                en_bloque = False
+                i += 1
+        elif en_simple:
+            actual.append(c)
+            if c == "\\" and sig:
+                actual.append(sig)
+                i += 1
+            elif c == "'":
+                en_simple = False
+        elif en_doble:
+            actual.append(c)
+            if c == "\\" and sig:
+                actual.append(sig)
+                i += 1
+            elif c == '"':
+                en_doble = False
+        else:
+            if (c == "-" and sig == "-") or c == "#":
+                en_linea = True
+                actual.append(c)
+            elif c == "/" and sig == "*":
+                en_bloque = True
+                actual.append(c)
+            elif c == "'":
+                en_simple = True
+                actual.append(c)
+            elif c == '"':
+                en_doble = True
+                actual.append(c)
+            elif c == ";":
+                stmt = "".join(actual).strip()
+                if stmt:
+                    sentencias.append(stmt)
+                actual = []
+            else:
+                actual.append(c)
+        i += 1
+
+    ultimo = "".join(actual).strip()
+    if ultimo:
+        sentencias.append(ultimo)
+
+    resultado = []
+    for s in sentencias:
+        sin_bloque = re.sub(r"/\*.*?\*/", "", s, flags=re.S)
+        sin_coment = re.sub(r"(?m)(--.*$|#.*$)", "", sin_bloque)
+        if sin_coment.strip():
+            resultado.append(s)
+    return resultado

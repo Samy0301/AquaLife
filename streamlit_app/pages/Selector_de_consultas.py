@@ -1,6 +1,5 @@
 import streamlit as st
-from db import repo_root, _get_live_connection
-import re
+from db import repo_root, _get_live_connection, dividir_sentencias_sql
 import pandas as pd
 
 st.set_page_config(
@@ -57,79 +56,6 @@ tab_tabla, tab_sql = st.tabs(["📋 Resultados", "💻 Ver SQL"])
 with tab_sql:
     st.code(sql_texto, language="sql")
 
-
-def dividir_sentencias_sql(sql: str) -> list[str]:
-    sentencias = []
-    actual = []
-    en_simple = False
-    en_doble = False
-    en_linea = False
-    en_bloque = False
-    i = 0
-    n = len(sql)
-
-    while i < n:
-        c = sql[i]
-        sig = sql[i + 1] if i + 1 < n else ""
-
-        if en_linea:
-            actual.append(c)
-            if c == "\n":
-                en_linea = False
-        elif en_bloque:
-            actual.append(c)
-            if c == "*" and sig == "/":
-                actual.append(sig)
-                en_bloque = False
-                i += 1
-        elif en_simple:
-            actual.append(c)
-            if c == "\\" and sig:
-                actual.append(sig)
-                i += 1
-            elif c == "'":
-                en_simple = False
-        elif en_doble:
-            actual.append(c)
-            if c == "\\" and sig:
-                actual.append(sig)
-                i += 1
-            elif c == '"':
-                en_doble = False
-        else:
-            if (c == "-" and sig == "-") or c == "#":
-                en_linea = True
-                actual.append(c)
-            elif c == "/" and sig == "*":
-                en_bloque = True
-                actual.append(c)
-            elif c == "'":
-                en_simple = True
-                actual.append(c)
-            elif c == '"':
-                en_doble = True
-                actual.append(c)
-            elif c == ";":
-                stmt = "".join(actual).strip()
-                if stmt:
-                    sentencias.append(stmt)
-                actual = []
-            else:
-                actual.append(c)
-        i += 1
-
-    ultimo = "".join(actual).strip()
-    if ultimo:
-        sentencias.append(ultimo)
-
-    # filtrar bloques que solo tengan comentarios 
-    resultado = []
-    for s in sentencias:
-        sin_bloque = re.sub(r"/\*.*?\*/", "", s, flags=re.S)
-        sin_coment = re.sub(r"(?m)(--.*$|#.*$)", "", sin_bloque)
-        if sin_coment.strip():
-            resultado.append(s)
-    return resultado
 
 def ejecutar_script_sql(sql_texto: str) -> list[list[dict]]:
     conn = _get_live_connection()
